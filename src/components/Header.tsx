@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppMode, TabType, DentalTabType } from '../types/interview';
+import { AppMode, TabType } from '../types/interview';
 import { 
   Stethoscope, 
   Target, 
@@ -10,8 +10,8 @@ import {
   Sparkles, 
   MessageSquareCode, 
   FileQuestion, 
-  UserCheck,
-  GraduationCap
+  FileText,
+  UserCheck
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -32,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isDental = appMode === 'dental';
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <header className="print:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
       
       {/* Top micro-bar: Mode Selector Banner */}
       <div className="bg-slate-100 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800/80 px-4 py-1.5 text-xs">
@@ -79,11 +79,11 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Main navigation row */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
         {/* Zone 1: Single Wordmark */}
         <div 
-          onClick={() => onSelectTab(isDental ? 'dental-mmi' : 'generator')}
+          onClick={() => onSelectTab(isDental ? 'pdf-a4-brief' : 'generator')}
           className="flex items-center gap-2.5 cursor-pointer whitespace-nowrap shrink-0 group"
         >
           <div className={`w-8 h-8 rounded-lg text-white flex items-center justify-center font-bold text-sm shadow-sm transition-colors ${
@@ -105,8 +105,20 @@ export const Header: React.FC<HeaderProps> = ({
           {isDental ? (
             <>
               <button
-                onClick={() => onSelectTab('dental-mmi')}
+                onClick={() => onSelectTab('pdf-a4-brief')}
                 className={`px-2.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  currentTab === 'pdf-a4-brief'
+                    ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-teal-600" />
+                PDF A4 요약·질문
+              </button>
+
+              <button
+                onClick={() => onSelectTab('dental-mmi')}
+                className={`px-2 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   currentTab === 'dental-mmi'
                     ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -118,7 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => onSelectTab('why-dentistry')}
-                className={`px-2.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   currentTab === 'why-dentistry'
                     ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 font-bold border border-cyan-200 dark:border-cyan-800'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -130,7 +142,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <button
                 onClick={() => onSelectTab('dental-extractor')}
-                className={`px-2.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                   currentTab === 'dental-extractor'
                     ? 'bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300 font-bold border border-teal-200 dark:border-teal-800'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50'
@@ -202,6 +214,18 @@ export const Header: React.FC<HeaderProps> = ({
             </>
           ) : (
             <>
+              <button
+                onClick={() => onSelectTab('pdf-a4-brief')}
+                className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  currentTab === 'pdf-a4-brief'
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 hover:bg-slate-50'
+                }`}
+              >
+                <FileText className="w-4 h-4 text-teal-600" />
+                PDF A4 요약·질문
+              </button>
+
               <button
                 onClick={() => onSelectTab('generator')}
                 className={`px-3 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
@@ -287,6 +311,14 @@ export const Header: React.FC<HeaderProps> = ({
         {isDental ? (
           <>
             <button
+              onClick={() => onSelectTab('pdf-a4-brief')}
+              className={`px-2.5 py-1.5 rounded-md whitespace-nowrap shrink-0 ${
+                currentTab === 'pdf-a4-brief' ? 'bg-teal-700 text-white font-bold' : 'text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              PDF A4 요약·질문
+            </button>
+            <button
               onClick={() => onSelectTab('dental-mmi')}
               className={`px-2.5 py-1.5 rounded-md whitespace-nowrap shrink-0 ${
                 currentTab === 'dental-mmi' ? 'bg-teal-700 text-white font-bold' : 'text-slate-600 dark:text-slate-300'
@@ -353,6 +385,14 @@ export const Header: React.FC<HeaderProps> = ({
           </>
         ) : (
           <>
+            <button
+              onClick={() => onSelectTab('pdf-a4-brief')}
+              className={`px-2.5 py-1.5 rounded-md whitespace-nowrap shrink-0 ${
+                currentTab === 'pdf-a4-brief' ? 'bg-slate-900 text-white font-medium' : 'text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              PDF A4 요약·질문
+            </button>
             <button
               onClick={() => onSelectTab('generator')}
               className={`px-2.5 py-1.5 rounded-md whitespace-nowrap shrink-0 ${

@@ -70,15 +70,31 @@ const STAR_D_SAMPLES: StarDSample[] = [
   }
 ];
 
-export const StarDClinicTab: React.FC = () => {
+interface StarDClinicTabProps {
+  initialQuestion?: string;
+  initialSchool?: string;
+  initialDraft?: string;
+}
+
+export const StarDClinicTab: React.FC<StarDClinicTabProps> = ({
+  initialQuestion,
+  initialSchool,
+  initialDraft,
+}) => {
   const [selectedSample, setSelectedSample] = useState<StarDSample>(STAR_D_SAMPLES[0]);
-  const [targetSchool, setTargetSchool] = useState(STAR_D_SAMPLES[0].schoolName);
-  const [question, setQuestion] = useState(STAR_D_SAMPLES[0].question);
-  const [rawAnswer, setRawAnswer] = useState(STAR_D_SAMPLES[0].rawDraft);
+  const [targetSchool, setTargetSchool] = useState(initialSchool || STAR_D_SAMPLES[0].schoolName);
+  const [question, setQuestion] = useState(initialQuestion || STAR_D_SAMPLES[0].question);
+  const [rawAnswer, setRawAnswer] = useState(initialDraft || STAR_D_SAMPLES[0].rawDraft);
   const [focusAspect, setFocusAspect] = useState(STAR_D_SAMPLES[0].focusAspect);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (initialQuestion) setQuestion(initialQuestion);
+    if (initialSchool) setTargetSchool(initialSchool);
+    if (initialDraft) setRawAnswer(initialDraft);
+  }, [initialQuestion, initialSchool, initialDraft]);
 
   // 1-minute oral pace countdown timer
   const [seconds, setSeconds] = useState(55);

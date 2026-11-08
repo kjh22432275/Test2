@@ -1,6 +1,7 @@
 export type AppMode = 'dental' | 'general';
 
 export type DentalTabType = 
+  | 'pdf-a4-brief'
   | 'dental-mmi'
   | 'why-dentistry'
   | 'dental-extractor'
@@ -18,6 +19,50 @@ export type TabType =
   | 'extractor' 
   | 'mock-interview' 
   | 'parent-guide';
+
+export interface PdfA4RoadmapItem {
+  grade: string;
+  stageTitle: string;
+  keySubjectsAndActivities: string;
+  dentalConnection: string;
+}
+
+export interface PdfA4CorePillar {
+  pillarTitle: string;
+  summary: string;
+  evidenceSource: string;
+}
+
+export interface PdfInterviewerQuestion {
+  id: number;
+  type: string;
+  sourceSection: string;
+  mainQuestion: string;
+  interviewerIntent: string;
+  followUpQuestions: string[];
+  starDDefenseGuide: string;
+}
+
+export interface PdfA4BriefResult {
+  applicantProfile: {
+    targetUniversity: string;
+    oneLineIdentity: string;
+    coreKeywords: string[];
+    evaluationSummary: {
+      academicCompetence: string;
+      dentalFit: string;
+      manualDexterity: string;
+      medicalEthics: string;
+    };
+  };
+  threeYearRoadmap: PdfA4RoadmapItem[];
+  corePillars: PdfA4CorePillar[];
+  officerAudit: {
+    strengths: string[];
+    vulnerabilities: string[];
+  };
+  interviewerQuestions: PdfInterviewerQuestion[];
+}
 
 export interface PromptEngineeringTechnique {
   technique: string;
