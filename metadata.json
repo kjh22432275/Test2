@@ -1,0 +1,8 @@
+{
+  "name": "Remix 학종 면접 프롬프트 마스터",
+  "description": "고3 수험생과 학부모를 위한 학생부종합전형 면접 프롬프트 엔지니어링 생성기 및 입학사정관 실전 코칭 워크스페이스",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
