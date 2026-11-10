@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PRESET_SAMPLES, PresetSample } from '../data/presetSamples';
 import { ExtractedQuestion } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { FileQuestion, Sparkles, BookOpen, Check, Copy, HelpCircle, ArrowRight } from 'lucide-react';
 
 interface QuestionExtractorTabProps {
@@ -25,7 +26,7 @@ export const QuestionExtractorTab: React.FC<QuestionExtractorTabProps> = ({
     if (!activities.trim()) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/extract-questions', {
+      const response = await apiFetch('/api/gemini/extract-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetMajor, activities }),
@@ -35,7 +36,7 @@ export const QuestionExtractorTab: React.FC<QuestionExtractorTabProps> = ({
         setQuestions(data.data.questions);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

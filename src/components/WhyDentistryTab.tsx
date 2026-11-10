@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { WHY_DENTAL_DEFENSES, WhyDentalDefense } from '../data/dentalMasterData';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   Target, 
   Sparkles, 
@@ -30,7 +31,7 @@ export const WhyDentistryTab: React.FC = () => {
     if (!studentPitch.trim() || loading) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/why-dentistry-evaluate', {
+      const response = await apiFetch('/api/gemini/why-dentistry-evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -43,7 +44,7 @@ export const WhyDentistryTab: React.FC = () => {
         setResult(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

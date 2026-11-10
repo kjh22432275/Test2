@@ -1,9 +1,11 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
+import { generateDynamicPdfA4Brief } from './src/data/studentRecordAnalysisEngine.ts';
 
 dotenv.config();
 
@@ -14,9 +16,11 @@ const app = express();
 const port = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '50mb' }));
+app.use('/assets', express.static(path.resolve(__dirname, 'public', 'assets')));
 
 // Initialize GoogleGenAI server-side with required User-Agent
 let aiClient: GoogleGenAI | null = null;
+let geminiCreditsDepleted = false;
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (apiKey) {
@@ -28,6 +32,19 @@ if (apiKey) {
       },
     },
   });
+}
+
+function markGeminiFallbackIfNeeded(err: any) {
+  const msg = String(err?.message || err || '');
+  if (
+    msg.includes('402') ||
+    msg.includes('429') ||
+    msg.includes('RESOURCE_EXHAUSTED') ||
+    msg.includes('prepayment credits') ||
+    msg.includes('quota')
+  ) {
+    geminiCreditsDepleted = true;
+  }
 }
 
 // 1. 프롬프트 엔지니어링 기반 맞춤형 면접 프롬프트 생성 엔드포인트
@@ -78,7 +95,7 @@ app.post('/api/gemini/generate-prompt', async (req: Request, res: Response) => {
 - 집중 대비 포인트/보완점: ${focusOrWeakness || '활동의 진위 확인 질문 및 전공 탐구 동기의 차별화'}
 - 작성 요청자: ${userType}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -91,12 +108,12 @@ app.post('/api/gemini/generate-prompt', async (req: Request, res: Response) => {
       const parsed = JSON.parse(response.text || '{}');
       return res.json({ success: true, data: parsed });
     } else {
-      // Fallback response if no API key is present
+      // Fallback response if no API key is present or credits are depleted
       const fallback = generateFallbackPrompt(targetMajor, interviewType, purpose, studentActivities, focusOrWeakness);
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error generating prompt:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackPrompt(
       req.body.targetMajor || '컴퓨터공학과',
       req.body.interviewType || '서류기반 면접',
@@ -174,7 +191,7 @@ app.post('/api/gemini/evaluate-answer', async (req: Request, res: Response) => {
 [학생의 실제 답변]: ${studentAnswer}
 [참고한 생기부/활동 맥락]: ${recordContext || '별도 맥락 없음'}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -191,7 +208,7 @@ app.post('/api/gemini/evaluate-answer', async (req: Request, res: Response) => {
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error evaluating answer:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackEvaluation(req.body.targetMajor, req.body.question, req.body.studentAnswer);
     return res.json({ success: true, data: fallback });
   }
@@ -224,7 +241,7 @@ app.post('/api/gemini/extract-questions', async (req: Request, res: Response) =>
 [학생의 학생부/세특 기록 요약]:
 ${activities}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -240,7 +257,7 @@ ${activities}`;
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error extracting questions:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackQuestions(req.body.targetMajor, req.body.activities);
     return res.json({ success: true, data: fallback });
   }
@@ -407,7 +424,7 @@ app.post('/api/gemini/chat-interview', async (req: Request, res: Response) => {
 3. 블라인드 규정(고교명, 부모 배경 언급)을 학생이 어기면 정중히 주의를 주세요.
 4. 한국어로 정중한 구어체(해요체/하십시오체)를 사용하세요.`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const contents = history.map((item: any) => ({
         role: item.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: item.text }],
@@ -433,7 +450,7 @@ app.post('/api/gemini/chat-interview', async (req: Request, res: Response) => {
       });
     }
   } catch (err: any) {
-    console.error('Error in chat interview:', err);
+    markGeminiFallbackIfNeeded(err);
     return res.json({
       success: true,
       reply: `네, 잘 들었습니다. 해당 경험을 바탕으로, 만약 대학 입학 후 유사한 연구를 더 큰 규모로 진행한다면 어떤 실험적 변수를 추가로 통제해보고 싶으신가요?`
@@ -507,7 +524,7 @@ app.post('/api/gemini/dental-mmi-evaluate', async (req: Request, res: Response) 
 [학생의 구술 답변]:
 ${studentAnswer}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -523,7 +540,7 @@ ${studentAnswer}`;
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error in dental MMI evaluation:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackDentalMMIEval(
       req.body.stationType || '윤리·딜레마',
       req.body.scenarioTitle || '치의학 상황',
@@ -570,7 +587,7 @@ app.post('/api/gemini/why-dentistry-evaluate', async (req: Request, res: Respons
 [학생의 실제 답변]:
 ${studentAnswer}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -586,7 +603,7 @@ ${studentAnswer}`;
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error evaluating why dentistry:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackWhyDentalEval(req.body.studentAnswer || '');
     return res.json({ success: true, data: fallback });
   }
@@ -709,7 +726,7 @@ app.post('/api/gemini/stard-clinic', async (req: Request, res: Response) => {
 [학생의 초안 답변]:
 ${rawAnswer}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const response = await aiClient.models.generateContent({
         model: 'gemini-3.8-flash',
         contents: userPrompt,
@@ -725,7 +742,7 @@ ${rawAnswer}`;
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error in STAR-D clinic:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackStarDClinic(
       req.body.targetSchool || '경희대학교 치의예과',
       req.body.question || '',
@@ -818,10 +835,15 @@ app.post('/api/gemini/analyze-pdf-record', async (req: Request, res: Response) =
       fileName = '학교생활기록부.pdf',
       targetSchool = '경희대학교 치의예과',
       supplementaryText = '',
+      interviewStyleCondition = '',
+      variationSeed = 0,
     } = req.body;
 
     const systemInstruction = `당신은 대한민국 주요 치과대학(경희대, 단국대, 경북대, 부산대, 조선대) 및 대학 입학처에서 15년간 학생부종합전형 서류 및 면접을 총괄해 온 수석 입학사정관이자 치의예과 면접 심사위원장입니다.
-지원자의 학교생활기록부(PDF 원본 문서 및 추가 요약 기록) 전체를 정밀 분석하여 다음 두 가지를 완성하세요:
+지원자의 학교생활기록부(PDF 원본 문서 및 추가 요약 기록) 전체와 사용자가 사전 제시한 [학교별 면접 질문 성향 및 특별 요구 조건(5줄 지침)]을 정밀 분석하여 다음 두 가지를 완성하세요:
+
+[최우선 반영 지침 - 학교별 면접 질문 성향 및 요구 조건]:
+${interviewStyleCondition || '실험·활동의 사실 여부(직접 수행 vs 문헌 인용) 검증 및 기초과학 심층 원리, 치의학 0.1mm 수기 적합성, 환자 공감 의료윤리를 균형 있게 검증할 것.'}
 
 1. [A4 1장 분량의 입학사정관 서류 브리핑 시트 (Executive 1-Page Brief)]
 - 수십 페이지에 달하는 3개년 생기부(교과 이수 및 성적 추이, 과목별 세부능력 및 특기사항, 창의적 체험활동-자율/동아리/진로, 행동특성 및 종합의견)를 면접관이 면접장에 들고 들어가는 A4 1장 분량으로 한눈에 들어오게 구조화하여 요약합니다.
@@ -829,15 +851,16 @@ app.post('/api/gemini/analyze-pdf-record', async (req: Request, res: Response) =
 - 블라인드 면접 규정에 따라 고교명, 부모/친인척 신상, 교외 수상실적은 자동으로 마스킹 처리하여 정리하세요.
 
 2. [면접관 시선의 날카로운 실전 압박 질문 & 꼬리질문 세트 (6문항)]
-- 요약된 A4 브리핑 시트를 보고 실제 면접관 2~3인이 지원자에게 던질 가장 날카로운 질문 6개를 생성합니다.
+- 요약된 A4 브리핑 시트와 [학교별 면접 질문 성향 및 요구 조건]을 최우선 반영하여 실제 면접관 2~3인이 지원자에게 던질 가장 날카로운 질문 6개를 생성합니다.
 - 질문 유형 구성:
-  ① [세특 진위·원리 검증] (2문항): 학생이 기재한 실험, 수식, 화학/생명/물리 원리를 정말 본인이 이해하고 수행했는지 검증하는 질문
+  ① [세특 진위·원리 검증] (2문항): 학생이 기재한 실험, 수식, 화학/생명/물리 원리를 정말 본인이 이해하고 수행했는지 사실 여부와 심층 원리를 검증하는 질문
   ② [치의학 적성·손기술 연계] (2문항): 왜 일반 의대·약대·이공계가 아니라 하필 ${targetSchool}인지, 미세 수기(Manual Dexterity)와 구강악안면 역량이 어떻게 드러나는지 묻는 질문
   ③ [서류 빈틈·한계 압박] (1문항): 탐구 과정의 한계점, 가설 실패 원인, 혹은 성적/이수 과목상의 아쉬운 지점을 찌르는 압박 질문
   ④ [치과의료윤리·인성] (1문항): 행특/봉사/공동체 활동과 연계하여 환자 소통, 자연치아 보존, 의료 사각지대 딜레마를 묻는 질문
 
 반드시 아래 JSON 형식으로만 응답하세요:
 {
+  "appliedInterviewCondition": "반영된 학교별 면접 질문 성향 및 요구 조건 요약",
   "applicantProfile": {
     "targetUniversity": "${targetSchool}",
     "oneLineIdentity": "사정관이 이 지원자를 한 문장으로 정의하는 핵심 타이틀 (예: 고분자 생체재료의 화학적 기전과 0.1mm 미세 수기 역량을 겸비한 구강생명 탐구형 인재)",
@@ -916,17 +939,20 @@ app.post('/api/gemini/analyze-pdf-record', async (req: Request, res: Response) =
 
     const textPrompt = `[지원 목표 대학]: ${targetSchool}
 [업로드된 파일명]: ${fileName}
+[사전 설정된 학교별 면접 질문 성향 및 특별 요구 조건 (5줄 서술칸)]:
+${interviewStyleCondition || '해당 대학 면접 기조에 맞춘 활동 진위 여부 및 전공 심층 질문'}
 [추가 참고 텍스트 / 핵심 요약 메모]:
-${supplementaryText || '첨부된 PDF 학생부 문서를 바탕으로 3개년 전체 기록을 A4 1장 분량의 입학사정관 브리핑 시트로 정리하고, 면접관 시선의 심층 질문 6문항과 꼬리질문을 생성해 주세요.'}`;
+${supplementaryText || '첨부된 PDF 학생부 문서를 바탕으로 3개년 전체 기록을 A4 1장 분량의 입학사정관 브리핑 시트로 정리하고, 위 면접 질문 성향 조건을 반영한 심층 질문 6문항과 꼬리질문을 생성해 주세요.'}`;
 
-    if (aiClient) {
+    if (aiClient && !geminiCreditsDepleted) {
       const parts: any[] = [];
 
       if (pdfBase64 && typeof pdfBase64 === 'string') {
         const cleanBase64 = pdfBase64.includes('base64,')
           ? pdfBase64.split('base64,')[1]
           : pdfBase64;
-        if (cleanBase64.length > 50) {
+        // Avoid sending multi-megabyte scanned PDFs inline if supplementary text is already present
+        if (cleanBase64.length > 50 && cleanBase64.length < 2_500_000) {
           parts.push({
             inlineData: {
               mimeType: 'application/pdf',
@@ -948,17 +974,28 @@ ${supplementaryText || '첨부된 PDF 학생부 문서를 바탕으로 3개년 �
       });
 
       const parsed = JSON.parse(response.text || '{}');
+      if (interviewStyleCondition && !parsed.appliedInterviewCondition) {
+        parsed.appliedInterviewCondition = interviewStyleCondition;
+      }
       return res.json({ success: true, data: parsed });
     } else {
-      const fallback = generateFallbackPdfA4Brief(targetSchool, fileName, supplementaryText);
+      const fallback = generateFallbackPdfA4Brief(
+        targetSchool,
+        fileName,
+        supplementaryText,
+        interviewStyleCondition,
+        Number(variationSeed) || 0
+      );
       return res.json({ success: true, data: fallback });
     }
   } catch (err: any) {
-    console.error('Error analyzing PDF student record:', err);
+    markGeminiFallbackIfNeeded(err);
     const fallback = generateFallbackPdfA4Brief(
       req.body.targetSchool || '경희대학교 치의예과',
       req.body.fileName || '학교생활기록부.pdf',
-      req.body.supplementaryText || ''
+      req.body.supplementaryText || '',
+      req.body.interviewStyleCondition || '',
+      Number(req.body.variationSeed) || 0
     );
     return res.json({ success: true, data: fallback });
   }
@@ -967,9 +1004,37 @@ ${supplementaryText || '첨부된 PDF 학생부 문서를 바탕으로 3개년 �
 function generateFallbackPdfA4Brief(
   targetSchool: string,
   fileName: string,
-  supplementaryText: string
+  supplementaryText: string,
+  interviewStyleCondition: string = '',
+  variationSeed: number = 0
 ) {
-  return {
+  const isKimJunwoo =
+    fileName.includes('0a2310ec') ||
+    fileName.includes('김준우') ||
+    fileName.includes('서라벌') ||
+    supplementaryText.includes('김준우') ||
+    supplementaryText.includes('서라벌') ||
+    supplementaryText.includes('불소') ||
+    supplementaryText.includes('장-뇌') ||
+    supplementaryText.includes('장뇌축') ||
+    supplementaryText.includes('LPS') ||
+    supplementaryText.includes('ATP') ||
+    supplementaryText.includes('1070') ||
+    supplementaryText.includes('소묘') ||
+    supplementaryText.includes('페트병') ||
+    fileName === '학교생활기록부.pdf';
+
+  if (isKimJunwoo) {
+    return generateDynamicPdfA4Brief(
+      targetSchool,
+      fileName,
+      supplementaryText,
+      interviewStyleCondition,
+      variationSeed
+    );
+  }
+
+  return applyCustomInterviewConditions({
     applicantProfile: {
       targetUniversity: targetSchool,
       oneLineIdentity: `기초과학(화학·물리·생명) 원리로 구강 경조직과 생체재료를 탐구하고 0.1mm 미세 조작 역량을 입증한 ${targetSchool} 맞춤형 인재`,
@@ -1109,23 +1174,105 @@ function generateFallbackPdfA4Brief(
         starDDefenseGuide: '[S/T] 학급/동아리에서 갈등이나 불안을 겪는 친구의 감정을 먼저 수용해 라포(Rapport)를 형성했던 실제 경험 제시 ➔ [A/R] 일방적 지시가 아닌 시각 자료와 단계별 안내(Tell-Show-Do)로 불안의 원인을 낮추고 합의를 이끌어낸 과정 설명 ➔ [D] 자연치아의 치주인대 가치와 치료 장단점을 환자 눈높이에서 투명하게 설명(Informed Consent)하는 신뢰받는 치과의사 다짐.'
       }
     ]
-  };
+  }, targetSchool, interviewStyleCondition);
 }
+
+function applyCustomInterviewConditions(
+  baseResult: any,
+  targetSchool: string,
+  interviewStyleCondition: string
+) {
+  const trimmed = (interviewStyleCondition || '').trim();
+  if (!trimmed) {
+    baseResult.appliedInterviewCondition = `[${targetSchool} 기본 면접 기조] 서류 내 탐구 활동의 사실 여부(직접 수행 vs 문헌 참고) 확인 및 기초과학 심층 원리, 0.1mm 치의학 수기 적성, 환자 공감 의료윤리 종합 검증`;
+    return baseResult;
+  }
+
+  baseResult.appliedInterviewCondition = trimmed;
+  const lines = trimmed
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^[-•*0-9.)\s]+/, '').trim())
+    .filter((l) => l.length > 3);
+
+  const hasFactCheckFocus = /사실|진위|직접|실험|인용|과장|팩트|역할|수행/.test(trimmed);
+  const hasDeepTheoryFocus = /심층|원리|수식|교과|기전|메커니즘|법칙|개념/.test(trimmed);
+
+  if (lines.length > 0) {
+    baseResult.officerAudit.vulnerabilities = [
+      `[맞춤형 조건 1순위 반영] ${lines[0]}`,
+      ...(lines[1] ? [`[맞춤형 조건 2순위 반영] ${lines[1]}`] : []),
+      ...baseResult.officerAudit.vulnerabilities.slice(0, 2),
+    ];
+  }
+
+  if (Array.isArray(baseResult.interviewerQuestions)) {
+    baseResult.interviewerQuestions = baseResult.interviewerQuestions.map((q: any, idx: number) => {
+      const matchedLine = lines[idx % Math.max(1, lines.length)];
+      const updatedFollowUps = [...(q.followUpQuestions || [])];
+
+      if (idx === 0 && hasFactCheckFocus) {
+        updatedFollowUps[0] = `[사실여부·역할 압박] 이 탐구에서 본인이 직접 설계·수행한 영역과 논문/문헌 데이터를 인용한 영역을 명확히 구분해 보시고, 과정 중 예상과 달랐던 시행착오는 무엇이었나요?`;
+      } else if (idx === 1 && hasDeepTheoryFocus) {
+        updatedFollowUps[0] = `[교과 심층원리 압박] 보고서에 적힌 전문 용어를 사용하지 않고, 고등학교 화학·생명과학 교과서의 기본 법칙만으로 이 현상의 핵심 원리를 면접관에게 증명해 보세요.`;
+      } else if (matchedLine && idx < lines.length) {
+        updatedFollowUps.push(
+          `[학교 맞춤 조건 심층확인] "${matchedLine}" 관점에서 볼 때, 본인의 이 활동이 갖는 가장 결정적인 근거와 한계점은 무엇인가요?`
+        );
+      }
+
+      return {
+        ...q,
+        interviewerIntent: matchedLine
+          ? `[사전 설정 조건 반영: ${matchedLine}] — ${q.interviewerIntent}`
+          : q.interviewerIntent,
+        followUpQuestions: updatedFollowUps,
+      };
+    });
+  }
+
+  return baseResult;
+}
+
+// 9. 무설치 독립형 단일 HTML 파일 다운로드 엔드포인트
+app.get('/api/download-standalone-html', (_req: Request, res: Response) => {
+  const standalonePath = path.resolve(__dirname, 'public', 'DentalPass_Standalone_Master.html');
+  if (fs.existsSync(standalonePath)) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="DentalPass_Master_Standalone.html"'
+    );
+    return res.sendFile(standalonePath);
+  }
+  return res.status(404).send('Standalone HTML file not found');
+});
 
 async function startServer() {
   const isProduction = process.env.NODE_ENV === 'production';
 
-  if (!isProduction) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
+  if (isProduction) {
     app.use(express.static(path.resolve(__dirname, 'dist')));
     app.get('*', (_req: Request, res: Response) => {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    });
+  } else {
+    let viteInstance: any = null;
+    const viteReady = (async () => {
+      const { createServer: createViteServer } = await import('vite');
+      viteInstance = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa',
+      });
+      return viteInstance;
+    })();
+
+    app.use(async (req, res, next) => {
+      try {
+        const vite = viteInstance || (await viteReady);
+        vite.middlewares(req, res, next);
+      } catch (err) {
+        next(err);
+      }
     });
   }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DENTAL_SCHOOLS } from '../data/dentalMasterData';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   Sparkles, 
   Clock, 
@@ -133,7 +134,7 @@ export const StarDClinicTab: React.FC<StarDClinicTabProps> = ({
     if (!rawAnswer.trim() || loading) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/stard-clinic', {
+      const response = await apiFetch('/api/gemini/stard-clinic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,7 +150,7 @@ export const StarDClinicTab: React.FC<StarDClinicTabProps> = ({
         handleResetTimer();
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

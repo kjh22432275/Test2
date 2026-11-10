@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DENTAL_PRESET_SAMPLES, DentalPresetSample, DENTAL_SCHOOLS } from '../data/dentalMasterData';
 import { ExtractedQuestion } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   FileQuestion, 
   Sparkles, 
@@ -37,7 +38,7 @@ export const DentalQuestionExtractorTab: React.FC<DentalQuestionExtractorTabProp
     if (!activities.trim()) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/extract-questions', {
+      const response = await apiFetch('/api/gemini/extract-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -50,7 +51,7 @@ export const DentalQuestionExtractorTab: React.FC<DentalQuestionExtractorTabProp
         setQuestions(data.data.questions);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

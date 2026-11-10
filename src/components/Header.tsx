@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppMode, TabType } from '../types/interview';
+import { downloadStandaloneHtml } from '../utils/downloadStandaloneHtml';
+import {
+  isArgonEngineEnabled,
+  setArgonEngineEnabled,
+  subscribeArgonEngine,
+} from '../utils/standaloneApiEngine';
 import { 
   Stethoscope, 
   Target, 
@@ -11,7 +17,10 @@ import {
   MessageSquareCode, 
   FileQuestion, 
   FileText,
-  UserCheck
+  UserCheck,
+  Download,
+  Check,
+  Zap
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -30,13 +39,30 @@ export const Header: React.FC<HeaderProps> = ({
   onQuickStartMock 
 }) => {
   const isDental = appMode === 'dental';
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const [argonEnabled, setArgonEnabled] = useState<boolean>(isArgonEngineEnabled());
+
+  useEffect(() => {
+    return subscribeArgonEngine((enabled) => setArgonEnabled(enabled));
+  }, []);
+
+  const handleDownloadHtml = async () => {
+    setDownloading(true);
+    const ok = await downloadStandaloneHtml();
+    setDownloading(false);
+    if (ok) {
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 3000);
+    }
+  };
 
   return (
     <header className="print:hidden sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
       
-      {/* Top micro-bar: Mode Selector Banner */}
+      {/* Top micro-bar: Mode Selector Banner, Argon Engine Toggle & Standalone HTML Download */}
       <div className="bg-slate-100 dark:bg-slate-950/80 border-b border-slate-200/80 dark:border-slate-800/80 px-4 py-1.5 text-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 font-medium text-slate-600 dark:text-slate-400">
             <span className="hidden sm:inline">전형별 맞춤 특화 모드:</span>
             <div className="inline-flex p-0.5 rounded-lg bg-slate-200/80 dark:bg-slate-800 border border-slate-300/60 dark:border-slate-700">
@@ -68,12 +94,45 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          <div className="text-[11px] text-slate-500 hidden md:flex items-center gap-2">
-            <span>2026/2027 대입 학생부종합전형</span>
-            <span aria-hidden="true">·</span>
-            <span className={isDental ? 'text-teal-600 dark:text-teal-400 font-semibold' : ''}>
-              {isDental ? '경희·단국·경북·부산·조선 5대 치대 학종 집중' : '인문·자연·의약학 전계열 지원'}
-            </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Gemini 4 Argon Engine Toggle Button (works in both Web App and Standalone HTML) */}
+            <button
+              type="button"
+              onClick={() => setArgonEngineEnabled(!argonEnabled)}
+              className={`px-3 py-1 rounded-lg font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
+                argonEnabled
+                  ? 'bg-indigo-700 hover:bg-indigo-800 text-white border-indigo-500'
+                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-50'
+              }`}
+              title="웹 앱과 독립형 HTML 파일 모두에서 Gemini 4 Argon (gemini-4-argon) 심층 추론 엔진을 가동합니다"
+            >
+              <Zap className={`w-3.5 h-3.5 ${argonEnabled ? 'text-amber-300 fill-amber-300' : 'text-slate-400'}`} />
+              <span>
+                {argonEnabled
+                  ? 'Gemini Argon 엔진 (gemini-4-argon) 가동 중'
+                  : 'Gemini Argon 엔진 켜기 (현재 표준 모드)'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadHtml}
+              disabled={downloading}
+              className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+              title="설치나 서버 없이 크롬/엣지 브라우저에서 더블클릭만으로 모든 섹션과 Argon 엔진이 똑같이 작동하는 독립형 단일 HTML 파일을 다운로드합니다"
+            >
+              {downloaded ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>독립형 HTML 다운로드 완료!</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{downloading ? 'HTML 생성 중...' : '독립형 HTML 파일 다운로드 (Argon 내장)'}</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

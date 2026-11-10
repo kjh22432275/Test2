@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DENTAL_PRESET_SAMPLES, DentalPresetSample, DENTAL_SCHOOLS } from '../data/dentalMasterData';
 import { GeneratedPromptResult } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   Sparkles, 
   Copy, 
@@ -37,7 +38,7 @@ export const DentalPromptTab: React.FC<DentalPromptTabProps> = ({
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/generate-prompt', {
+      const response = await apiFetch('/api/gemini/generate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -54,7 +55,7 @@ export const DentalPromptTab: React.FC<DentalPromptTabProps> = ({
         setResult(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

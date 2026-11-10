@@ -44,6 +44,7 @@ export interface PdfInterviewerQuestion {
 }
 
 export interface PdfA4BriefResult {
+  appliedInterviewCondition?: string;
   applicantProfile: {
     targetUniversity: string;
     oneLineIdentity: string;

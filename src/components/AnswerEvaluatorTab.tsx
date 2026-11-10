@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PRESET_SAMPLES, PresetSample } from '../data/presetSamples';
 import { AnswerEvaluationResult } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { Award, AlertTriangle, CheckCircle2, HelpCircle, Sparkles, Lightbulb, RotateCcw } from 'lucide-react';
 
 export const AnswerEvaluatorTab: React.FC = () => {
@@ -22,7 +23,7 @@ export const AnswerEvaluatorTab: React.FC = () => {
     if (!studentAnswer.trim()) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/evaluate-answer', {
+      const response = await apiFetch('/api/gemini/evaluate-answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -37,7 +38,7 @@ export const AnswerEvaluatorTab: React.FC = () => {
         setEvaluation(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

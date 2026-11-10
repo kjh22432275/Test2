@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DENTAL_PRESET_SAMPLES, DentalPresetSample } from '../data/dentalMasterData';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   Award, 
   Sparkles, 
@@ -31,7 +32,7 @@ export const DentalEvaluatorTab: React.FC = () => {
     if (!studentAnswer.trim() || loading) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/dental-mmi-evaluate', {
+      const response = await apiFetch('/api/gemini/dental-mmi-evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -47,7 +48,7 @@ export const DentalEvaluatorTab: React.FC = () => {
         setEvaluation(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

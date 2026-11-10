@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PRESET_SAMPLES, PresetSample } from '../data/presetSamples';
 import { GeneratedPromptResult } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { Copy, Check, Sparkles, HelpCircle, ArrowRight, Lightbulb, ShieldAlert, Cpu } from 'lucide-react';
 
 interface PromptGeneratorTabProps {
@@ -44,7 +45,7 @@ export const PromptGeneratorTab: React.FC<PromptGeneratorTabProps> = ({
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/generate-prompt', {
+      const response = await apiFetch('/api/gemini/generate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -61,7 +62,7 @@ export const PromptGeneratorTab: React.FC<PromptGeneratorTabProps> = ({
         setResult(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

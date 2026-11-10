@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChatMessage } from '../types/interview';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { Play, Pause, RotateCcw, Send, UserCheck, Clock, Award, ShieldAlert } from 'lucide-react';
 
 interface MockInterviewTabProps {
@@ -64,7 +65,7 @@ export const MockInterviewTab: React.FC<MockInterviewTabProps> = ({
     handleResetTimer();
 
     try {
-      const response = await fetch('/api/gemini/chat-interview', {
+      const response = await apiFetch('/api/gemini/chat-interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,7 +87,7 @@ export const MockInterviewTab: React.FC<MockInterviewTabProps> = ({
         ]);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DENTAL_MMI_STATIONS, DentalMMIScenario } from '../data/dentalMasterData';
+import { apiFetch } from '../utils/standaloneApiEngine';
 import { 
   Stethoscope, 
   Clock, 
@@ -63,7 +64,7 @@ export const DentalMMITab: React.FC<DentalMMITabProps> = () => {
     if (!studentAnswer.trim() || loading) return;
     setLoading(true);
     try {
-      const response = await fetch('/api/gemini/dental-mmi-evaluate', {
+      const response = await apiFetch('/api/gemini/dental-mmi-evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -79,7 +80,7 @@ export const DentalMMITab: React.FC<DentalMMITabProps> = () => {
         setEvaluation(data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.warn(err);
     } finally {
       setLoading(false);
     }
